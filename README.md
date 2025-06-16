@@ -13,6 +13,12 @@ I have essentially combined two repositories for this task with some changes and
 - [TrackMania_AI](https://github.com/AndrejGobeX/TrackMania_AI) (GPLv3)
 - [Racing-Line-Optimization-with-PSO](https://github.com/ParsaD23/Racing-Line-Optimization-with-PSO) (MIT)
 
-As such, this project is licensed under the terms of the [GNU General Public License v3.0](LICENSE).
+As such, this project is licensed under the terms of the [GNU General Public License v3.0](LICENSE). Also, please go through their repos the work they've done is amazing
 
 As for the name, “Franz Hermann” was an alias used by Max Verstappen during a GT3 test at the Nürburgring Nordschleife, part of the official Nürburgring Endurance Series (he did it to avoid media attention). Hence, the name was given to the repo as admiration as the admired as one of the fastest, arguably greatest racing driver in F1 history.
+
+## General Working
+So its as simple as, put in a gbx file in the mapextractor.
+We get a text file for output
+Put it in the txtjsonconverter.py for the .json
+and run that in the modified main.py for the pso repo.
