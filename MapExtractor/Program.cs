@@ -12,6 +12,7 @@ namespace MapExtractor
     {
         static void Main(string[] args)
         {
+            Gbx.LZO = new Lzo();
             List<Tuple<List<Tuple<double, double>>, List<Tuple<double, double>>>> arr = new List<Tuple<List<Tuple<double, double>>, List<Tuple<double, double>>>>();
             using StreamWriter file = new(args[0].Substring(0, args[0].Length - 3)+"txt");
             var map = GameBox.ParseNode<CGameCtnChallenge>(args[0]);
