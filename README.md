@@ -28,7 +28,7 @@ Put it in the txtjsonconverter.py for the .json
 
 and run that in the modified main.py for the pso repo.
 
-##Requirements
+## Requirements
 
 * ```matplotlib```
 * ```numpy```
