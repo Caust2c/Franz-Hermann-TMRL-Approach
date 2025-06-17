@@ -24,7 +24,7 @@ So its as simple as, put in a gbx file in the mapextractor.
 
 We get a text file for output
 
-Put it in the txtjsonconverter.py for the .json
+Put it in the converter.py for the .json
 
 and run that in the modified main.py for the pso repo.
 
