@@ -37,6 +37,23 @@ and run that in the modified main.py for the pso repo.
 * ```You need dotnet installed for the mapextractor, with GBX.NET packages```
 * ```You might have to add GBX.NET.LZO package seperately in case you have an error specifiyng LZO```
 
+## Sample Showcase
+
+This is a showcase of the nascar.gbx map in the samplemaps folder
+
+The map layout (.json)
+
+![nascarlayout](https://github.com/user-attachments/assets/be7183b1-7c60-4804-9b06-69501bacee01)
+
+The map layout with sectors (n_sectors is set to 30)
+
+![nascarsectors](https://github.com/user-attachments/assets/015e7a7d-2a55-4dca-bc2b-e9b8f98a662f)
+
+The final racing line plot
+
+![nascarracingline](https://github.com/user-attachments/assets/8b5ea474-a82f-45d3-bb50-4f3cfe974862)
+
+
 ## ⚠️ Limitations
 
 - **Designed for closed loops**: The original racing line optimization was built for tracks where the start and end points are the same. Since many Trackmania maps aren't like that, some bugs or issues may occur when generating racing lines.
@@ -46,4 +63,7 @@ and run that in the modified main.py for the pso repo.
 - **Works best with clean 2D maps**: This approach assumes simple 2D maps with clearly defined track boundaries and no extra environment clutter. Complex or messy layouts may cause bugs, plotting errors, or broken centerline paths in the JSON.
 
 - **Limited to 2D representation**: Track elements like elevation, jumps, or banked turns are not supported, as the racing line logic is based on flat 2D coordinates.
+
+- Even in the sample showcase above, some issues are noticeable like the gap between the start and end points, and a few spots where the racing line could clearly be improved. That said, this approach still feels more efficient than letting the agent figure everything out from scratch and constantly tweaking rewards or weights for every new track.
+
 
