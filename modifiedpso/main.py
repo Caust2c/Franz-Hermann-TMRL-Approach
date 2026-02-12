@@ -39,7 +39,7 @@ def main():
 	
 	# Read tracks from json file
 	json_data = None
-	with open(r"C:\Users\hardi\Franz-Hermann-TMRL-Approach\samplemapsandtheirjson\Test2.Map.json") as file:
+	with open(r"C:\Users\hardi\Franz-Hermann-TMRL-Approach\samplemapsandtheirjson\Nascar.Map.json") as file:
 		json_data = json.load(file)
 
 	track_layout = json_data['layout']
