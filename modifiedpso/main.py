@@ -34,7 +34,7 @@ from shapely.geometry import MultiLineString
 from utils import plot_lines, get_closet_points
 
 def main():
-	# PARAMETERS
+	
 	N_SECTORS = 30
 	N_PARTICLES = 60
 	N_ITERATIONS = 150
@@ -43,17 +43,13 @@ def main():
 	CG = 3.8876
 	PLOT = True
 	
-	# Interactive file path input
 	print("=" * 60)
 	print("  TRACKMANIA RACING LINE OPTIMIZER")
 	print("=" * 60)
 	print()
-	
-	# Get file path from user
 	while True:
 		file_path = input("Enter the path to your track JSON file: ").strip()
 		
-		# Remove quotes if user copied path with quotes
 		file_path = file_path.strip('"').strip("'")
 		
 		if not file_path:
@@ -75,7 +71,6 @@ def main():
 	
 	print(f"\nLoading track from: {file_path}")
 	
-	# Read tracks from json file
 	try:
 		with open(file_path, 'r') as file:
 			json_data = json.load(file)
@@ -86,7 +81,6 @@ def main():
 		print(f"Error reading file: {e}")
 		sys.exit(1)
 
-	# Validate JSON structure
 	if 'layout' not in json_data or 'width' not in json_data:
 		print("Error: JSON file must contain 'layout' and 'width' fields")
 		sys.exit(1)
@@ -99,7 +93,6 @@ def main():
 	print(f"  - Track width: {track_width}")
 	print()
 
-	# Compute inner and outer tracks borders
 	center_line = LineString(track_layout)
 	inside_offset = center_line.parallel_offset(track_width / 2, 'left')
 	outside_offset = center_line.parallel_offset(track_width / 2, 'right')
@@ -125,7 +118,6 @@ def main():
 		plt.tight_layout()
 		plt.show()
 	
-	# Define sectors' extreme points (in coordinates)
 	inside_points, outside_points = define_sectors(center_line, inside_line, outside_line, N_SECTORS)
 
 	if PLOT:
@@ -141,7 +133,6 @@ def main():
 		plt.tight_layout()
 		plt.show()
 
-	# Define the boundaries for PSO
 	boundaries = []
 	for i in range(N_SECTORS):
 		boundaries.append(np.linalg.norm(inside_points[i]-outside_points[i]))
@@ -163,7 +154,6 @@ def main():
 	_, v, x, y = get_lap_time(sectors_to_racing_line(global_solution, inside_points, outside_points), return_all=True)
 
 	if PLOT:
-		# Animation of optimization progress
 		fig = plt.figure(figsize=(14, 10))
 		plt.title("Racing Line Optimization Progress", fontsize=14, fontweight='bold')
 		plt.ion()
@@ -172,7 +162,6 @@ def main():
 			plt.clf()
 			lth, vh, xh, yh = get_lap_time(sectors_to_racing_line(gs_history[i], inside_points, outside_points), return_all=True)
 			
-			# Enhanced color mapping
 			scatter = plt.scatter(xh, yh, marker='.', c=vh, 
 								cmap='turbo', s=20, vmin=0, vmax=max(vh) if max(vh) > 0 else 1)
 			
@@ -188,29 +177,24 @@ def main():
 		
 		plt.ioff()
 		
-		# Final racing line visualization
 		fig = plt.figure(figsize=(14, 10))
 		rl = np.array(sectors_to_racing_line(global_solution, inside_points, outside_points))
 		
-		# Create enhanced color map
 		norm = mcolors.Normalize(vmin=0, vmax=max(v))
 		scatter = plt.scatter(x, y, marker='o', c=v, cmap='turbo', 
 							 s=30, norm=norm, edgecolors='black', linewidths=0.5)
 		
-		# Plot sector lines
 		for i in range(N_SECTORS):
 			plt.plot([inside_points[i][0], outside_points[i][0]], 
 					[inside_points[i][1], outside_points[i][1]], 
 					'gray', alpha=0.2, linewidth=0.8)
 		
-		# Plot racing line points
 		plt.plot(rl[:,0], rl[:,1], 'ko', markersize=6, 
 				markerfacecolor='yellow', markeredgewidth=1.5, 
 				label='Sector Points', zorder=5)
 		
 		plot_lines([outside_line, inside_line])
 		
-		# Enhanced colorbar
 		cbar = plt.colorbar(scatter, label='Speed (km/h)', pad=0.02)
 		cbar.ax.tick_params(labelsize=10)
 		
@@ -222,7 +206,6 @@ def main():
 		plt.tight_layout()
 		plt.show()
 
-		# Optimization convergence plot
 		fig = plt.figure(figsize=(12, 6))
 		plt.plot(gs_eval_history, linewidth=2, color='#2E86AB')
 		plt.fill_between(range(len(gs_eval_history)), gs_eval_history, 
@@ -234,10 +217,8 @@ def main():
 		plt.tight_layout()
 		plt.show()
 		
-		# Speed distribution along track
 		fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(14, 8))
 		
-		# Speed profile
 		distance = np.cumsum([0] + [math.sqrt((x[i+1]-x[i])**2 + (y[i+1]-y[i])**2) 
 									for i in range(len(x)-1)])
 		ax1.plot(distance, v, linewidth=2, color='#A23B72')
@@ -247,7 +228,6 @@ def main():
 		ax1.set_title('Speed Profile Along Track', fontsize=12, fontweight='bold')
 		ax1.grid(True, alpha=0.3)
 		
-		# Speed histogram
 		ax2.hist(v, bins=30, color='#F18F01', alpha=0.7, edgecolor='black')
 		ax2.set_xlabel('Speed (km/h)', fontsize=12)
 		ax2.set_ylabel('Frequency', fontsize=12)
@@ -259,7 +239,6 @@ def main():
 		plt.tight_layout()
 		plt.show()
 
-	# Print final statistics
 	print()
 	print("=" * 60)
 	print("  OPTIMIZATION RESULTS")
@@ -339,96 +318,73 @@ def get_lap_time(racing_line:list, return_all=False):
 	'''
 	
 	rl = np.array(racing_line)
-
-	# Close the loop if needed
 	if np.linalg.norm(rl[0] - rl[-1]) > 1e-3:
 		rl = np.vstack([rl, rl[0]])
 
-	# Remove duplicates
 	_, unique_idx = np.unique(rl, axis=0, return_index=True)
 	rl = rl[np.sort(unique_idx)]
 
 	if len(rl) < 4:
 		raise ValueError("Too few points to compute a racing line spline.")
 
-	# Create smooth spline
 	tck, _ = interpolate.splprep([rl[:, 0], rl[:, 1]], s=0.0, per=0)
 	x, y = interpolate.splev(np.linspace(0, 1, 1000), tck)
 
-	# Computing derivatives for curvature
 	dx, dy = np.gradient(x), np.gradient(y)
 	d2x, d2y = np.gradient(dx), np.gradient(dy)
 
 	curvature = np.abs(dx * d2y - d2x * dy) / (dx * dx + dy * dy)**1.5
 	
-	# Avoid division by zero
 	curvature = np.maximum(curvature, 1e-6)
 	radius = 1.0 / curvature
 
-	# TRACKMANIA-INSPIRED PHYSICS MODEL
-	# ================================
+	MAX_SPEED = 500.0         
+	MAX_ACCELERATION = 15.0   
+	MAX_BRAKING = 25.0         
+	GRIP_COEFFICIENT = 1.8     
+	DRAG_COEFFICIENT = 0.003   
 	
-	# Car parameters (inspired by Trackmania Stadium car)
-	MAX_SPEED = 500.0          # km/h - Trackmania cars can go very fast
-	MAX_ACCELERATION = 15.0    # m/s² - Strong acceleration
-	MAX_BRAKING = 25.0         # m/s² - Strong braking
-	GRIP_COEFFICIENT = 1.8     # Higher than normal cars (arcade physics)
-	DRAG_COEFFICIENT = 0.003   # Air resistance
 	
-	# Convert to m/s for calculations
 	max_speed_ms = MAX_SPEED / 3.6
 	
-	# Calculate corner speeds based on grip and radius
 	g = 9.81
 	v_corner = []
 	
 	for r in radius:
-		# Speed-dependent grip model (Trackmania has better grip at higher speeds)
 		effective_grip = GRIP_COEFFICIENT * (1 + 0.0002 * r)
 		
-		# Maximum cornering speed based on lateral grip
 		v_max_corner = math.sqrt(effective_grip * g * r)
 		
-		# Apply drag at high speeds
 		v_max_corner = min(v_max_corner, max_speed_ms)
 		
-		# Convert to km/h
 		v_corner.append(v_max_corner * 3.6)
 	
-	# Forward pass - acceleration limited
 	v = [v_corner[0]]
 	for i in range(1, len(x)):
 		ds = math.sqrt((x[i] - x[i-1])**2 + (y[i] - y[i-1])**2)
 		
-		# Maximum speed we could reach by accelerating
 		v_accel = math.sqrt(v[i-1]**2 + 2 * (MAX_ACCELERATION / 3.6**2) * ds * 3.6**2)
 		
-		# Take minimum of acceleration-limited and corner-limited speed
 		v.append(min(v_accel, v_corner[i], MAX_SPEED))
 	
-	# Backward pass - braking limited
 	for i in range(len(x) - 2, -1, -1):
 		ds = math.sqrt((x[i+1] - x[i])**2 + (y[i+1] - y[i])**2)
 		
-		# Maximum speed we could have while still being able to brake for next point
 		v_brake = math.sqrt(v[i+1]**2 + 2 * (MAX_BRAKING / 3.6**2) * ds * 3.6**2)
 		
-		# Take minimum of current speed and braking-limited speed
 		v[i] = min(v[i], v_brake)
 	
-	# Apply drag losses
 	for i in range(len(v)):
 		drag_factor = 1.0 - DRAG_COEFFICIENT * v[i]
-		v[i] = max(v[i] * drag_factor, 10.0)  # Minimum speed 10 km/h
+		v[i] = max(v[i] * drag_factor, 10.0)  
 	
-	# Calculate lap time
 	lap_time = 0
 	for i in range(len(x) - 1):
 		ds = math.sqrt((x[i+1] - x[i])**2 + (y[i+1] - y[i])**2)
 		avg_speed = (v[i] + v[i+1]) / 2.0
 		
 		if avg_speed > 0:
-			lap_time += ds / (avg_speed / 3.6)  # Convert km/h to m/s
+			lap_time += ds / (avg_speed / 3.6) 
 	
 	if return_all:
 		return lap_time, v, x, y
