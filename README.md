@@ -41,6 +41,11 @@ create venv
 cd modifiedpso
 python main.py
 remeber changing the path of json in hte main.py
+dotnet new console -n MapExtractor
+cd MapExtractor
+dotnet add package GBX.NET
+dotnet add package GBX.NET.LZO
+dotnet build
 
 ## Sample Showcase
 

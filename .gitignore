@@ -3,3 +3,8 @@ __pycache__/
 venv/
 .env/
 env/
+bin/
+obj/
+*.user
+*.suo
+.vs/
