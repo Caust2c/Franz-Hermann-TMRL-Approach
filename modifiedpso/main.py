@@ -33,8 +33,35 @@ from shapely.geometry import MultiLineString
 
 from utils import plot_lines, get_closet_points
 
-def main():
+def remove_duplicate_points(points, tolerance=1e-6):
+	'''Remove consecutive duplicate points from track layout
 	
+	Parameters
+	----------
+	points : list
+		List of [x, y] coordinates
+	tolerance : float
+		Distance threshold for considering points as duplicates
+		
+	Returns
+	-------
+	cleaned_points : list
+		Points with consecutive duplicates removed
+	'''
+	if len(points) < 2:
+		return points
+	
+	cleaned = [points[0]]
+	for i in range(1, len(points)):
+		dist = math.sqrt((points[i][0] - cleaned[-1][0])**2 + 
+						(points[i][1] - cleaned[-1][1])**2)
+		if dist > tolerance:
+			cleaned.append(points[i])
+	
+	print(f"  - Cleaned {len(points) - len(cleaned)} duplicate points")
+	return cleaned
+
+def main():
 	N_SECTORS = 30
 	N_PARTICLES = 60
 	N_ITERATIONS = 150
@@ -47,6 +74,7 @@ def main():
 	print("  TRACKMANIA RACING LINE OPTIMIZER")
 	print("=" * 60)
 	print()
+	
 	while True:
 		file_path = input("Enter the path to your track JSON file: ").strip()
 		
@@ -88,9 +116,25 @@ def main():
 	track_layout = json_data['layout']
 	track_width = json_data['width']
 	
-	print(f"Track loaded successfully!")
-	print(f"  - Track points: {len(track_layout)}")
+	print(f"Track loaded - initial points: {len(track_layout)}")
+	
+	track_layout = remove_duplicate_points(track_layout, tolerance=0.01)
+	
+	if len(track_layout) < 4:
+		print(f"Error: Track has too few unique points ({len(track_layout)}). Need at least 4 points.")
+		sys.exit(1)
+	
+	start_point = np.array(track_layout[0])
+	end_point = np.array(track_layout[-1])
+	gap_distance = np.linalg.norm(start_point - end_point)
+	
+	is_open_track = gap_distance > 5.0  
+	
+	print(f"Track processed successfully!")
+	print(f"  - Unique track points: {len(track_layout)}")
 	print(f"  - Track width: {track_width}")
+	print(f"  - Track type: {'OPEN (Sprint/Point-to-Point)' if is_open_track else 'CLOSED (Circuit/Loop)'}")
+	print(f"  - Start-to-finish gap: {gap_distance:.2f} meters")
 	print()
 
 	center_line = LineString(track_layout)
@@ -103,8 +147,20 @@ def main():
 	if PLOT:
 		fig = plt.figure(figsize=(12, 10))
 		plt.title("Track Layout Points", fontsize=14, fontweight='bold')
-		for p in track_layout:
-			plt.plot(p[0], p[1], 'r.', markersize=4)
+		for i, p in enumerate(track_layout):
+			if i == 0:
+				plt.plot(p[0], p[1], 'go', markersize=12, label='START', zorder=5)
+			elif i == len(track_layout) - 1:
+				plt.plot(p[0], p[1], 'rs', markersize=12, label='FINISH', zorder=5)
+			else:
+				plt.plot(p[0], p[1], 'r.', markersize=4)
+		
+		if is_open_track:
+			plt.plot([track_layout[0][0], track_layout[-1][0]], 
+					[track_layout[0][1], track_layout[-1][1]], 
+					'b--', linewidth=2, alpha=0.5, label=f'Gap: {gap_distance:.1f}m')
+		
+		plt.legend(loc='best', fontsize=10)
 		plt.grid(True, alpha=0.3)
 		plt.axis('equal')
 		plt.tight_layout()
@@ -113,6 +169,13 @@ def main():
 		fig = plt.figure(figsize=(12, 10))
 		plt.title("Track Boundaries", fontsize=14, fontweight='bold')
 		plot_lines([outside_line, inside_line])
+		
+		plt.plot(track_layout[0][0], track_layout[0][1], 'go', markersize=15, 
+				label='START', zorder=5, markeredgecolor='black', markeredgewidth=2)
+		plt.plot(track_layout[-1][0], track_layout[-1][1], 'rs', markersize=15, 
+				label='FINISH', zorder=5, markeredgecolor='black', markeredgewidth=2)
+		
+		plt.legend(loc='best', fontsize=10)
 		plt.grid(True, alpha=0.3)
 		plt.axis('equal')
 		plt.tight_layout()
@@ -120,30 +183,57 @@ def main():
 	
 	inside_points, outside_points = define_sectors(center_line, inside_line, outside_line, N_SECTORS)
 
+	boundaries = []
+	valid_sectors = []
+	
+	for i in range(N_SECTORS):
+		boundary_width = np.linalg.norm(inside_points[i] - outside_points[i])
+		
+		if boundary_width > 1.0:
+			boundaries.append(boundary_width)
+			valid_sectors.append(i)
+		else:
+			print(f"Warning: Skipping sector {i} - boundary too narrow ({boundary_width:.2f}m)")
+	
+	if len(valid_sectors) < 4:
+		print(f"Error: Too few valid sectors ({len(valid_sectors)}). Need at least 4.")
+		print("This usually means the track has too many duplicate points or sharp angles.")
+		sys.exit(1)
+	
+	print(f"Using {len(valid_sectors)}/{N_SECTORS} sectors for optimization")
+	
+	inside_points_filtered = inside_points[valid_sectors]
+	outside_points_filtered = outside_points[valid_sectors]
+
 	if PLOT:
 		fig = plt.figure(figsize=(12, 10))
 		plt.title("Optimization Sectors", fontsize=14, fontweight='bold')
-		for i in range(N_SECTORS):
-			plt.plot([inside_points[i][0], outside_points[i][0]], 
-					[inside_points[i][1], outside_points[i][1]], 
-					'g-', alpha=0.3, linewidth=1)
+		for idx in valid_sectors:
+			plt.plot([inside_points[idx][0], outside_points[idx][0]], 
+					[inside_points[idx][1], outside_points[idx][1]], 
+					'g-', alpha=0.5, linewidth=1.5, label='Valid Sector' if idx == valid_sectors[0] else '')
+		
+		invalid_sectors = [i for i in range(N_SECTORS) if i not in valid_sectors]
+		if invalid_sectors:
+			for idx in invalid_sectors:
+				plt.plot([inside_points[idx][0], outside_points[idx][0]], 
+						[inside_points[idx][1], outside_points[idx][1]], 
+						'r-', alpha=0.3, linewidth=0.8, label='Invalid Sector' if idx == invalid_sectors[0] else '')
+		
 		plot_lines([outside_line, inside_line])
+		plt.legend(loc='best', fontsize=10)
 		plt.grid(True, alpha=0.3)
 		plt.axis('equal')
 		plt.tight_layout()
 		plt.show()
 
-	boundaries = []
-	for i in range(N_SECTORS):
-		boundaries.append(np.linalg.norm(inside_points[i]-outside_points[i]))
-
 	def myCostFunc(sectors):
-		return get_lap_time(sectors_to_racing_line(sectors, inside_points, outside_points))
+		return get_lap_time(sectors_to_racing_line(sectors, inside_points_filtered, outside_points_filtered))
 
 	print("Starting PSO optimization...")
 	global_solution, gs_eval, gs_history, gs_eval_history = pso.optimize(
 		cost_func=myCostFunc,
-		n_dimensions=N_SECTORS,
+		n_dimensions=len(valid_sectors),
 		boundaries=boundaries,
 		n_particles=N_PARTICLES,
 		n_iterations=N_ITERATIONS,
@@ -151,7 +241,7 @@ def main():
 		verbose=True
 	)
 
-	_, v, x, y = get_lap_time(sectors_to_racing_line(global_solution, inside_points, outside_points), return_all=True)
+	_, v, x, y = get_lap_time(sectors_to_racing_line(global_solution, inside_points_filtered, outside_points_filtered), return_all=True)
 
 	if PLOT:
 		fig = plt.figure(figsize=(14, 10))
@@ -160,7 +250,7 @@ def main():
 		
 		for i in range(0, len(np.array(gs_history)), max(1, int(N_ITERATIONS/100))):
 			plt.clf()
-			lth, vh, xh, yh = get_lap_time(sectors_to_racing_line(gs_history[i], inside_points, outside_points), return_all=True)
+			lth, vh, xh, yh = get_lap_time(sectors_to_racing_line(gs_history[i], inside_points_filtered, outside_points_filtered), return_all=True)
 			
 			scatter = plt.scatter(xh, yh, marker='.', c=vh, 
 								cmap='turbo', s=20, vmin=0, vmax=max(vh) if max(vh) > 0 else 1)
@@ -178,27 +268,34 @@ def main():
 		plt.ioff()
 		
 		fig = plt.figure(figsize=(14, 10))
-		rl = np.array(sectors_to_racing_line(global_solution, inside_points, outside_points))
+		rl = np.array(sectors_to_racing_line(global_solution, inside_points_filtered, outside_points_filtered))
 		
 		norm = mcolors.Normalize(vmin=0, vmax=max(v))
 		scatter = plt.scatter(x, y, marker='o', c=v, cmap='turbo', 
 							 s=30, norm=norm, edgecolors='black', linewidths=0.5)
 		
-		for i in range(N_SECTORS):
-			plt.plot([inside_points[i][0], outside_points[i][0]], 
-					[inside_points[i][1], outside_points[i][1]], 
+		for idx in valid_sectors:
+			plt.plot([inside_points[idx][0], outside_points[idx][0]], 
+					[inside_points[idx][1], outside_points[idx][1]], 
 					'gray', alpha=0.2, linewidth=0.8)
 		
 		plt.plot(rl[:,0], rl[:,1], 'ko', markersize=6, 
 				markerfacecolor='yellow', markeredgewidth=1.5, 
 				label='Sector Points', zorder=5)
 		
+		if is_open_track:
+			plt.plot(x[0], y[0], 'go', markersize=20, 
+					label='START', zorder=10, markeredgecolor='black', markeredgewidth=2)
+			plt.plot(x[-1], y[-1], 'rs', markersize=20, 
+					label='FINISH', zorder=10, markeredgecolor='black', markeredgewidth=2)
+		
 		plot_lines([outside_line, inside_line])
 		
 		cbar = plt.colorbar(scatter, label='Speed (km/h)', pad=0.02)
 		cbar.ax.tick_params(labelsize=10)
 		
-		plt.title(f"Optimized Racing Line\nLap Time: {gs_eval:.3f}s | Avg Speed: {np.mean(v):.1f} km/h", 
+		track_type_str = "Sprint Track" if is_open_track else "Circuit"
+		plt.title(f"Optimized Racing Line ({track_type_str})\nLap Time: {gs_eval:.3f}s | Avg Speed: {np.mean(v):.1f} km/h | Valid Sectors: {len(valid_sectors)}/{N_SECTORS}", 
 				 fontsize=14, fontweight='bold')
 		plt.legend(loc='best', fontsize=10)
 		plt.grid(True, alpha=0.3)
@@ -318,8 +415,15 @@ def get_lap_time(racing_line:list, return_all=False):
 	'''
 	
 	rl = np.array(racing_line)
-	if np.linalg.norm(rl[0] - rl[-1]) > 1e-3:
+
+	distance_start_end = np.linalg.norm(rl[0] - rl[-1])
+	is_closed_loop = distance_start_end < 5.0
+	
+	if is_closed_loop and distance_start_end > 1e-3:
 		rl = np.vstack([rl, rl[0]])
+		periodic_spline = 1
+	else:
+		periodic_spline = 0 
 
 	_, unique_idx = np.unique(rl, axis=0, return_index=True)
 	rl = rl[np.sort(unique_idx)]
@@ -327,7 +431,7 @@ def get_lap_time(racing_line:list, return_all=False):
 	if len(rl) < 4:
 		raise ValueError("Too few points to compute a racing line spline.")
 
-	tck, _ = interpolate.splprep([rl[:, 0], rl[:, 1]], s=0.0, per=0)
+	tck, _ = interpolate.splprep([rl[:, 0], rl[:, 1]], s=0.0, per=periodic_spline)
 	x, y = interpolate.splev(np.linspace(0, 1, 1000), tck)
 
 	dx, dy = np.gradient(x), np.gradient(y)
@@ -338,12 +442,13 @@ def get_lap_time(racing_line:list, return_all=False):
 	curvature = np.maximum(curvature, 1e-6)
 	radius = 1.0 / curvature
 
-	MAX_SPEED = 500.0         
-	MAX_ACCELERATION = 15.0   
-	MAX_BRAKING = 25.0         
-	GRIP_COEFFICIENT = 1.8     
-	DRAG_COEFFICIENT = 0.003   
-	
+	# TRACKMANIA-INSPIRED PHYSICS MODEL
+
+	MAX_SPEED = 1000.0
+	MAX_ACCELERATION = 22.0
+	MAX_BRAKING = 40.0
+	GRIP_COEFFICIENT = 2.8     
+	DRAG_COEFFICIENT = 0.0006 
 	
 	max_speed_ms = MAX_SPEED / 3.6
 	
@@ -351,47 +456,52 @@ def get_lap_time(racing_line:list, return_all=False):
 	v_corner = []
 	
 	for r in radius:
-		effective_grip = GRIP_COEFFICIENT * (1 + 0.0002 * r)
+		effective_grip = GRIP_COEFFICIENT * (1 + 0.0005 * r)
 		
-		v_max_corner = math.sqrt(effective_grip * g * r)
+		v_max_corner = math.sqrt(max(effective_grip * g * r, 0.0))
 		
 		v_max_corner = min(v_max_corner, max_speed_ms)
 		
-		v_corner.append(v_max_corner * 3.6)
+		v_corner.append(v_max_corner)
 	
 	v = [v_corner[0]]
 	for i in range(1, len(x)):
 		ds = math.sqrt((x[i] - x[i-1])**2 + (y[i] - y[i-1])**2)
 		
-		v_accel = math.sqrt(v[i-1]**2 + 2 * (MAX_ACCELERATION / 3.6**2) * ds * 3.6**2)
+		a_drag = DRAG_COEFFICIENT * v[i-1]**2
 		
-		v.append(min(v_accel, v_corner[i], MAX_SPEED))
+		a_net = max(MAX_ACCELERATION - a_drag, 0.0)
+		
+		v_accel = math.sqrt(max(v[i-1]**2 + 2 * a_net * ds, 0.0))
+		
+		v.append(min(v_accel, v_corner[i], max_speed_ms))
 	
 	for i in range(len(x) - 2, -1, -1):
 		ds = math.sqrt((x[i+1] - x[i])**2 + (y[i+1] - y[i])**2)
 		
-		v_brake = math.sqrt(v[i+1]**2 + 2 * (MAX_BRAKING / 3.6**2) * ds * 3.6**2)
+		v_brake = math.sqrt(max(v[i+1]**2 + 2 * MAX_BRAKING * ds, 0.0))
 		
 		v[i] = min(v[i], v_brake)
 	
 	for i in range(len(v)):
-		drag_factor = 1.0 - DRAG_COEFFICIENT * v[i]
-		v[i] = max(v[i] * drag_factor, 10.0)  
+		v[i] = max(v[i] * 3.6, 10.0)
 	
 	lap_time = 0
 	for i in range(len(x) - 1):
 		ds = math.sqrt((x[i+1] - x[i])**2 + (y[i+1] - y[i])**2)
-		avg_speed = (v[i] + v[i+1]) / 2.0
+		
+		avg_speed = ((v[i] / 3.6) + (v[i+1] / 3.6)) / 2.0
 		
 		if avg_speed > 0:
-			lap_time += ds / (avg_speed / 3.6) 
+			lap_time += ds / avg_speed
 	
 	if return_all:
 		return lap_time, v, x, y
 	return lap_time
 
+
 def define_sectors(center_line : LineString, inside_line : LineString, outside_line : LineString, n_sectors : int):
-	'''Defines sectors' search space
+	'''Defines sectors' search space for open or closed tracks
 	
 	Parameters
 	----------
@@ -412,11 +522,10 @@ def define_sectors(center_line : LineString, inside_line : LineString, outside_l
 		List coordinates corresponding to the external point of each sector segment
 	'''
 	
-	distances = np.linspace(0, center_line.length, n_sectors)
+	distances = np.linspace(0, center_line.length, n_sectors + 1)[:-1]  
 	center_points_temp = [center_line.interpolate(distance) for distance in distances]
-	center_points = np.array([[center_points_temp[i].x, center_points_temp[i].y] for i in range(len(center_points_temp)-1)])
-	center_points = np.append(center_points, [center_points[0]], axis=0)
-
+	center_points = np.array([[center_points_temp[i].x, center_points_temp[i].y] for i in range(len(center_points_temp))])
+	
 	distances = np.linspace(0, inside_line.length, 1000)
 	inside_border = [inside_line.interpolate(distance) for distance in distances]
 	inside_border = np.array([[e.x, e.y] for e in inside_border])
