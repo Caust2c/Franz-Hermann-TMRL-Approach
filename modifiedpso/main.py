@@ -8,7 +8,7 @@
 
 #------------------------------------------------------------------------------+
 #
-#   Modified by Hardik Lalla (2025)
+#   Modified by Hardik Lalla (2026)
 #   - Adapted for integration with Trackmania-based racing line data
 #   - Adjusted JSON input format and spline logic
 #   - Added interactive file path input
