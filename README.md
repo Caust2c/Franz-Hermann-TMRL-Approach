@@ -88,11 +88,9 @@ Reference time for Trackmania medals (author, gold, silver and bronze)
 
 Despite operating under simplified physics assumptions and inherent modeling inaccuracies, the system achieved a time of 16.251 seconds, securing a bronze medal and narrowly falling short of silver.
 
-####Demo Video
+#### Demo Video
 
 https://github.com/user-attachments/assets/9853a051-223c-4db6-a890-7d02563c0de7
-
-
 
 ## Future Work
 
