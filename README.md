@@ -8,9 +8,9 @@ Instead of relying on brute-force reinforcement learning, this project takes a s
 
 The project includes:
 
-- 📍 Path extraction and geometry analysis (adapted from Trackmania map data)
-- 🧠 Particle Swarm Optimization (PSO) for finding the optimal racing trajectory
-- 🎮 Simulation in Trackmania for visual and analytical feedback
+- Path extraction and geometry analysis (adapted from Trackmania map data)
+- Particle Swarm Optimization (PSO) for finding the optimal racing trajectory
+- Simulation in Trackmania for visual and analytical feedback
 
 I have essentially combined two repositories for this task with some changes and additions.
 
@@ -21,68 +21,82 @@ As such, this project is licensed under the terms of the [GNU General Public Lic
 
 As for the name, “Franz Hermann” was an alias used by Max Verstappen during a GT3 test at the Nürburgring Nordschleife, part of the official Nürburgring Endurance Series (he did it to avoid media attention). Hence, the name was given to the repo as admiration to one of the fastest, arguably greatest racing driver in F1 history.
 
-## General Working
-
-So its as simple as, put in a gbx file in the mapextractor.
-
-We get a text file for output
-
-Put it in the converter.py for the .json
-
-and run that in the modified main.py for the pso repo.
-
 ## Get started
 
-git clone
+Clone this repository
 
-navigate to folder in terminal
+Navigate to the folder
 
-dotnet build
+```
+cd Franz-Hermann-TMRL-Approach
+```
 
-(need gbx.lzo packages)
+Create a virtual environment in the main folder before starting anything (recommended)
 
-create venv
+```
+python -m venv venv
+venv\Scripts\activate
+pip install -r requirements.txt
+```
 
-cd modifiedpso
+Map extraction (.gbx to .txt)
 
-python main.py
-
-remeber changing the path of json in hte main.py
-
-dotnet new console -n MapExtractor
-
+```
 cd MapExtractor
+dotnet run -- "path\to\your\map.Gbx"
+```
 
-dotnet add package GBX.NET
+(needs gbx.lzo packages)
 
-dotnet add package GBX.NET.LZO
+This will generate a .txt file in the same directory as the input map.
 
-dotnet build
+For .txt output to .json
+
+```
+cd ../txttojson
+python converter.py
+```
+
+Just give the file path wherever asked
+
+For the main Racing line optimization
+
+```
+cd ../modifiedpso
+python main.py
+```
 
 ## Sample Showcase
 
-This is a showcase of the nascar.gbx map in the samplemaps folder
+This is a showcase of the Test2.Map.gbx in the samplemaps folder
 
 The map layout (.json)
 
-![nascarlayout](https://github.com/user-attachments/assets/be7183b1-7c60-4804-9b06-69501bacee01)
+![alt text](assets/imagejson.png)
 
 The map layout with sectors (n_sectors is set to 30)
 
-![nascarsectors](https://github.com/user-attachments/assets/015e7a7d-2a55-4dca-bc2b-e9b8f98a662f)
+![alt text](assets/imagesectors.png)
 
 The final racing line plot
 
-![nascarracingline](https://github.com/user-attachments/assets/8b5ea474-a82f-45d3-bb50-4f3cfe974862)
+![alt text](assets/imageracingline.png)
 
-## ⚠️ Limitations
+Reference time for Trackmania medals (author, gold, silver and bronze)
 
-- **Designed for closed loops**: The original racing line optimization was built for tracks where the start and end points are the same. Since many Trackmania maps aren't like that, some bugs or issues may occur when generating racing lines.
+![alt text](assets/trackdata.png)
 
-- **Physics are simplified**: It's not possible to fully replicate Trackmania’s driving physics in this system. However, I've done my best to approximate the behavior using adjustable parameters like friction and speed.
+Despite operating under simplified physics assumptions and inherent modeling inaccuracies, the system achieved a time of 16.251 seconds, securing a bronze medal and narrowly falling short of silver.
+
+## Future Work
+
+- Containerization using Docker to simplify setup and deployment.
+- Integration within the Trackmania environment once hardware constraints are addressed.
+
+## Limitations
+
+- **Physics are simplified**: It's not possible to fully replicate Trackmania’s driving physics in this system. However, I've done my best to approximate the behavior using adjustable parameters like max_speed, acceleration, grip and usage of basic formulas.
 
 - **Works best with clean 2D maps**: This approach assumes simple 2D maps with clearly defined track boundaries and no extra environment clutter. Complex or messy layouts may cause bugs, plotting errors, or broken centerline paths in the JSON.
 
 - **Limited to 2D representation**: Track elements like elevation, jumps, or banked turns are not supported, as the racing line logic is based on flat 2D coordinates.
-
-- Even in the sample showcase above, some issues are noticeable like the gap between the start and end points, and a few spots where the racing line could clearly be improved. That said, this approach still feels more efficient than letting the agent figure everything out from scratch and constantly tweaking rewards or weights for every new track.
