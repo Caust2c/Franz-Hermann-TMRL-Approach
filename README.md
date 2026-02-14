@@ -34,17 +34,29 @@ and run that in the modified main.py for the pso repo.
 ## Get started
 
 git clone
+
 navigate to folder in terminal
+
 dotnet build
+
 (need gbx.lzo packages)
+
 create venv
+
 cd modifiedpso
+
 python main.py
+
 remeber changing the path of json in hte main.py
+
 dotnet new console -n MapExtractor
+
 cd MapExtractor
+
 dotnet add package GBX.NET
+
 dotnet add package GBX.NET.LZO
+
 dotnet build
 
 ## Sample Showcase
